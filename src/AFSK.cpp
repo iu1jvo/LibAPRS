@@ -73,6 +73,15 @@ void AFSK_init(Afsk *afsk) {
         fifo_push(&afsk->delayFifo, 0);
     }
 
+    if (afsk->txPort[0] == null)
+    {
+        afsk->txPort[0]= DAC_PORT^0x10;
+        afsk->txPort[1]= DAC_PORT^0x20;
+        afsk->txPort[2]= DAC_PORT^0x40;
+        afsk->txPort[3]= DAC_PORT^0x80;
+    }
+        afsk->txPTT = DAC_PORT^0x08;
+
     AFSK_hw_init();
 
 }

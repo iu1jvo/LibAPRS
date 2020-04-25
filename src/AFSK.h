@@ -54,6 +54,7 @@ inline static uint8_t sinSample(uint16_t i) {
 #define PHASE_MAX    (SAMPLESPERBIT * PHASE_BITS)   // Resolution of our phase counter = 64
 #define PHASE_THRESHOLD  (PHASE_MAX / 2)            // Target transition point of our phase window
 
+#define TXBITS_NUM  4
 
 typedef struct Hdlc
 {
@@ -104,6 +105,11 @@ typedef struct Afsk
     uint8_t actualBits;                     // Actual found bits at correct bitrate
 
     volatile int status;                    // Status of the modem, 0 means OK
+
+    sbit txPort[TXBITS_NUM];
+
+    sbit txPTT;
+    
 
 } Afsk;
 

@@ -25,7 +25,22 @@ void AFSK_hw_refDetect(void) {
     }
 }
 
-void AFSK_hw_init(void) {
+
+void AFSK_hw_port_init(Afsk *afsk) {
+
+    //Configure pins
+    if (afsk->txDataPins[0].preg) *(afsk->txDataPins[0].preg) |= afsk->txDataPins[0].mask;
+    if (afsk->txDataPins[1].preg) *(afsk->txDataPins[1].preg) |= afsk->txDataPins[1].mask;
+    if (afsk->txDataPins[2].preg) *(afsk->txDataPins[2].preg) |= afsk->txDataPins[2].mask;
+    if (afsk->txDataPins[3].preg) *(afsk->txDataPins[3].preg) |= afsk->txDataPins[3].mask;
+    
+    if (afsk->txPTTPin.preg) *(afsk->txPTTPin.preg) |= afsk->txPTTPin.mask;
+
+}
+
+
+
+void AFSK_hw_init(Afsk *afsk) {
     // Set up ADC
 
     AFSK_hw_refDetect();
@@ -52,7 +67,10 @@ void AFSK_hw_init(void) {
                 _BV(ADIE) |
                 _BV(ADPS2);
 
-    AFSK_DAC_INIT();
+    
+    
+    AFSK_hw_port_init(afsk);
+    //AFSK_DAC_INIT();
     LED_TX_INIT();
     LED_RX_INIT();
 }
@@ -73,16 +91,43 @@ void AFSK_init(Afsk *afsk) {
         fifo_push(&afsk->delayFifo, 0);
     }
 
-    if (afsk->txPort[0] == null)
+    // Pin Setup, if not.
+    if (afsk->txDataPins[0].pport == NULL)
     {
-        afsk->txPort[0]= DAC_PORT^0x10;
-        afsk->txPort[1]= DAC_PORT^0x20;
-        afsk->txPort[2]= DAC_PORT^0x40;
-        afsk->txPort[3]= DAC_PORT^0x80;
+       afsk->txDataPins[0].preg = portModeRegister(digitalPinToPort(4));
+       afsk->txDataPins[0].pport = portOutputRegister(digitalPinToPort(4)); 
+       afsk->txDataPins[0].mask = digitalPinToBitMask(4); 
     }
-        afsk->txPTT = DAC_PORT^0x08;
 
-    AFSK_hw_init();
+    if (afsk->txDataPins[1].pport == NULL)
+    {
+       afsk->txDataPins[1].preg = portModeRegister(digitalPinToPort(5));
+       afsk->txDataPins[1].pport = portOutputRegister(digitalPinToPort(5)); 
+       afsk->txDataPins[1].mask = digitalPinToBitMask(5);
+    }
+
+    if (afsk->txDataPins[2].pport == NULL)
+    {
+       afsk->txDataPins[2].preg = portModeRegister(digitalPinToPort(6));
+       afsk->txDataPins[2].pport = portOutputRegister(digitalPinToPort(6)); 
+       afsk->txDataPins[2].mask = digitalPinToBitMask(6);
+    }
+
+    if (afsk->txDataPins[3].pport == NULL)
+    {
+       afsk->txDataPins[3].preg = portModeRegister(digitalPinToPort(7));
+       afsk->txDataPins[3].pport = portOutputRegister(digitalPinToPort(7)); 
+       afsk->txDataPins[3].mask = digitalPinToBitMask(7);
+    }
+
+    if (afsk->txPTTPin.pport == NULL)
+    {
+       afsk->txPTTPin.preg = portModeRegister(digitalPinToPort(3));
+       afsk->txPTTPin.pport = portOutputRegister(digitalPinToPort(3)); 
+       afsk->txPTTPin.mask = digitalPinToBitMask(3); 
+    }
+
+    AFSK_hw_init(afsk);
 
 }
 
@@ -471,9 +516,24 @@ ISR(ADC_vect) {
     TIFR1 = _BV(ICF1);
     AFSK_adc_isr(AFSK_modem, ((int16_t)((ADC) >> 2) - 128));
     if (hw_afsk_dac_isr) {
-        DAC_PORT = (AFSK_dac_isr(AFSK_modem) & 0xF0) | _BV(3); 
+
+        uint8_t AFSK_data = (AFSK_dac_isr(AFSK_modem) & 0xF0);
+        AFSK_data >>= 8;
+
+        *(AFSK_modem->txPTTPin.pport) |= AFSK_modem->txPTTPin.mask;
+        for (uint8_t i=0; i < TXBITS_NUM; i++) {
+            uint8_t mask = (uint8_t)(0x01 << i);
+            if (AFSK_data && mask == mask) *(AFSK_modem->txDataPins[i].pport) |= AFSK_modem->txDataPins[i].mask;
+        }
+
+        //DAC_PORT = (AFSK_dac_isr(AFSK_modem) & 0xF0) | _BV(3); 
     } else {
-        DAC_PORT = 128;
+        *(AFSK_modem->txPTTPin.pport) &= ~((uint8_t)AFSK_modem->txPTTPin.mask);
+        *(AFSK_modem->txDataPins[0].pport) &= ~((uint8_t)AFSK_modem->txDataPins[0].mask);
+        *(AFSK_modem->txDataPins[1].pport)&= ~((uint8_t)AFSK_modem->txDataPins[1].mask);
+        *(AFSK_modem->txDataPins[2].pport) &= ~((uint8_t)AFSK_modem->txDataPins[2].mask);
+        *(AFSK_modem->txDataPins[3].pport) |=  AFSK_modem->txDataPins[3].mask;
+        //DAC_PORT = 128;
     }
 
     poll_timer++;

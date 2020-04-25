@@ -64,6 +64,15 @@ typedef struct Hdlc
     bool receiving;
 } Hdlc;
 
+typedef struct
+{
+    volatile uint8_t *preg;
+    volatile uint8_t *pport;
+    uint8_t mask;
+}
+txPortPin_t;
+
+
 typedef struct Afsk
 {
     // Stream access to modem
@@ -106,9 +115,9 @@ typedef struct Afsk
 
     volatile int status;                    // Status of the modem, 0 means OK
 
-    sbit txPort[TXBITS_NUM];
+    txPortPin_t txDataPins[TXBITS_NUM];
 
-    sbit txPTT;
+    txPortPin_t txPTTPin;
     
 
 } Afsk;
@@ -119,7 +128,7 @@ typedef struct Afsk
 
 #define AFSK_DAC_IRQ_START()   do { extern bool hw_afsk_dac_isr; hw_afsk_dac_isr = true; } while (0)
 #define AFSK_DAC_IRQ_STOP()    do { extern bool hw_afsk_dac_isr; hw_afsk_dac_isr = false; } while (0)
-#define AFSK_DAC_INIT()        do { DAC_DDR |= 0xF8; } while (0)
+//#define AFSK_DAC_INIT()        do { DAC_DDR |= 0xF8; } while (0)
 
 // Here's some macros for controlling the RX/TX LEDs
 // THE _INIT() functions writes to the DDRB register
